@@ -108,10 +108,8 @@ async function errorMessage(res: Response) {
 }
 
 export const GROQ_MODELS = [
-  "llama-3.1-8b-instant",
   "llama-3.3-70b-versatile",
-  "llama3-70b-8192",
-  "openai/gpt-oss-20b",
+  "llama-3.1-8b-instant",
 ] as const;
 export const GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"] as const;
 
