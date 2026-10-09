@@ -1,42 +1,58 @@
-https://github.com/VISHALM280/ui-spec-match
-```[cite: 30]
+# ⚡ CatchUp AI — Executive Chat Catch-Up & Action Intelligence Dashboard
+
+> **ProtocolX Hackathon Submission** | Solving *"The Unread Problem — What Did I Miss?"*
+
+CatchUp AI transforms chaotic, multi-threaded team chat transcripts from Slack, WhatsApp, and Microsoft Teams into structured, actionable intelligence within seconds. Built with a local-first privacy architecture, user transcripts and API keys stay strictly on the client side.
 
 ---
 
-### **Requirement 3: Deployed Project Link**[cite: 26, 27]
-```text
-https://ui-spec-match.lovable.app
-```[cite: 7]
+## 🔗 Submission Links
+* **Live Deployed App:** https://ui-spec-match.lovable.app
+* **GitHub Repository:** https://github.com/VISHALM280/ui-spec-match
 
 ---
 
-### **Requirement 4: Brief Description of the Project Built**[cite: 26, 27]
-```text
-CatchUp AI addresses "The Unread Problem — What Did I Miss?" challenge by ingesting noisy, multi-threaded team chat transcripts (Slack, WhatsApp, Teams) and instantly extracting structured, actionable summaries.
+## ✨ Key Features & Capabilities
 
-Key features include:
-- Noise Signal Meter: Visual indicator quantifying noise reduction percentage and estimated time saved per chat thread.
-- Executive Summary & Urgency Tagging: High-level overview with auto-calculated High, Medium, or Low urgency badges.
-- Interactive Action Item Checklist: Lists tasks, assignees (@username), deadlines, and interactive completion checkboxes.
-- Key Decisions & Debates Log: Maps confirmed team agreements separately from unresolved debates or unassigned urgent tasks.
-- Interactive Q&A Search: "Ask the Chat" bar for natural-language context querying.
-- Accessibility & Multi-Language: Built-in Text-to-Speech audio briefings and output translation into 7+ languages while preserving original usernames.
-- Executive UI: Light/Dark theme switching with a sleek glassmorphic dashboard design system.
-```[cite: 28]
+* 📊 **Noise Signal Meter:** Calculates off-topic noise reduction percentages and estimates time saved per chat thread.
+* 🚨 **Urgency & Executive Briefings:** Automatically categorizes context into High, Medium, or Low urgency badges with clean high-level summaries.
+* ✅ **Interactive Action Item Checklist:** Extracts tasks with assignees (`@username`), deadlines, and interactive completion checkboxes.
+* ⚖️ **Key Decisions & Open Debates Log:** Maps finalized team agreements separately from unassigned urgent tasks or unresolved conflicts.
+* ❓ **Interactive "Ask the Chat" Q&A:** Allows users to query the transcript using natural language questions for instant answers.
+* 🌐 **Multi-Language Output & Text-to-Speech:** Translates executive summaries into 7+ languages while preserving original usernames, with built-in TTS audio briefings.
+* 🌓 **Glassmorphic Light/Dark Mode System:** Native high-contrast theme toggle for seamless executive usability.
 
 ---
 
-### **Requirement 5: Gen AI Services Used & Location**[cite: 26, 27]
-```text
-1. Primary Inference Engine — Groq API (llama-3.3-70b-versatile & openai/gpt-oss-20b):
-   - Location: src/services/apiClient.ts / src/utils/groqHandler.ts
-   - Usage: Sub-second extraction of structured JSON containing executive summaries, action items, assignees, deadlines, and urgency ratings.
+## 🛠️ Gen AI Services & Architecture
 
-2. Context Search & Failover Engine — Google Gemini API (gemini-2.0-flash):
-   - Location: src/services/geminiHandler.ts
-   - Usage: Dynamic fallback cascade processing and interactive Q&A querying ("Ask the Chat").
+CatchUp AI utilizes a high-availability model fallback chain and local-first browser state execution:
 
-3. Client-Side Local-First Architecture:
-   - Location: src/context/ApiContext.tsx
-   - Usage: Executes API calls directly from browser state. API keys stay local in browser memory, satisfying the local-first processing requirement.
-```[cite: 27, 28]
+1. **Primary Model Engine — Groq API (`llama-3.3-70b-versatile` & `openai/gpt-oss-20b`)**
+   * *Path:* `src/services/apiClient.ts` / `src/utils/groqHandler.ts`
+   * *Function:* Sub-second inference extracting raw structured JSON payloads containing executive summaries, action items, assignees, deadlines, and urgency ratings.
+
+2. **Context Search & Failover Engine — Google Gemini API (`gemini-2.0-flash`)**
+   * *Path:* `src/services/geminiHandler.ts`
+   * *Function:* Dynamic failover cascade handling and direct natural language Q&A chat querying.
+
+3. **Local-First Privacy System**
+   * *Path:* `src/context/ApiContext.tsx`
+   * *Function:* API requests are executed directly from browser state. API keys stay in browser memory and are never stored on external backends, meeting strict hackathon privacy requirements.
+
+---
+
+## 🚀 Local Setup & Installation
+
+```bash
+# Clone the repository
+git clone [https://github.com/VISHALM280/ui-spec-match.git](https://github.com/VISHALM280/ui-spec-match.git)
+
+# Navigate to project folder
+cd ui-spec-match
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
