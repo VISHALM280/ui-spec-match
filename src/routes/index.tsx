@@ -34,6 +34,7 @@ import {
   SAMPLE_CHAT,
   SPEECH_LANG,
   analyzeChat,
+  RawResponseError,
   calendarUrl,
   detectProvider,
   toMarkdown,
@@ -66,6 +67,7 @@ function Index() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CatchUpResult | null>(null);
+  const [rawFallback, setRawFallback] = useState<string | null>(null);
   const [done, setDone] = useState<boolean[]>([]);
   const [speaking, setSpeaking] = useState<"idle" | "playing" | "paused">("idle");
   const abortRef = useRef<AbortController | null>(null);
@@ -97,14 +99,21 @@ function Index() {
     abortRef.current = ac;
     setLoading(true);
     setError(null);
+    setRawFallback(null);
     stopSpeech();
+    let parsedResult: CatchUpResult | null = null;
     try {
-      const r = await analyzeChat(apiKey, chat, language, ac.signal);
-      setResult(r);
-      setDone(r.action_items.map(() => false));
+      parsedResult = await analyzeChat(apiKey, chat, language, ac.signal);
+      console.log("Parsed JSON Output:", parsedResult);
     } catch (e) {
-      if ((e as Error).name !== "AbortError") setError((e as Error).message);
+      console.error("CatchUp failed:", e);
+      if (e instanceof RawResponseError) setRawFallback(e.rawText);
+      else if ((e as Error).name !== "AbortError") setError((e as Error).message);
     } finally {
+      if (parsedResult) {
+        setResult(parsedResult);
+        setDone(parsedResult.action_items.map(() => false));
+      }
       setLoading(false);
     }
   }
@@ -279,7 +288,13 @@ function Index() {
             </div>
           )}
 
-          {!result && !loading && !error && <EmptyState />}
+          {rawFallback && !loading && (
+            <div className="glass rounded-2xl p-5 text-sm">
+              <p className="font-semibold">Couldn't format the briefing — raw model output:</p>
+              <pre className="mt-2 max-h-[420px] overflow-auto whitespace-pre-wrap text-muted-foreground">{rawFallback}</pre>
+            </div>
+          )}
+          {!result && !loading && !error && !rawFallback && <EmptyState />}
           {loading && <LoadingState />}
 
           {result && !loading && (
