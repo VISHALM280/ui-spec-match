@@ -115,7 +115,7 @@ export async function analyzeChat(
   if (provider === "groq") {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      signal,
+      signal: signal ?? null,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
@@ -139,7 +139,7 @@ export async function analyzeChat(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
       {
         method: "POST",
-        signal,
+        signal: signal ?? null,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: sys }] },

@@ -90,8 +90,8 @@ function Index() {
   const provider = apiKey.trim() ? detectProvider(apiKey) : null;
 
   async function run() {
-    if (!apiKey.trim()) return toast.error("Add a Groq or Gemini API key first.");
-    if (!chat.trim()) return toast.error("Paste a chat transcript first.");
+    if (!apiKey.trim()) { toast.error("Add a Groq or Gemini API key first."); return; }
+    if (!chat.trim()) { toast.error("Paste a chat transcript first."); return; }
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -180,7 +180,7 @@ function Index() {
       )
       .join("");
     const w = window.open("", "_blank");
-    if (!w) return toast.error("Allow pop-ups to export PDF.");
+    if (!w) { toast.error("Allow pop-ups to export PDF."); return; }
     w.document.write(
       `<html><head><title>CatchUp Briefing</title><style>body{font-family:Inter,system-ui,sans-serif;max-width:720px;margin:40px auto;line-height:1.55;color:#0f172a}h2{margin-top:28px;border-bottom:1px solid #e2e8f0;padding-bottom:4px}li{margin:4px 0}</style></head><body>${html}</body></html>`,
     );
