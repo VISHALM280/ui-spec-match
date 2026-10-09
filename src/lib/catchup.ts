@@ -48,7 +48,7 @@ function systemPrompt(language: Language) {
 Today's date is ${today}. Resolve relative dates ("Friday", "tomorrow EOD") into ISO 8601 datetimes when possible.
 Write ALL natural-language output (summary, tasks, deadline_text, decisions, conflicts) in ${language}. Keep person names / usernames exactly as written in the transcript.
 Only use information present in the transcript. Never invent people, tasks or dates.
-Respond ONLY with a JSON object of this exact shape:
+Respond with RAW, valid JSON only. Do NOT wrap it in markdown code fences (no backtick characters), and add no commentary before or after. The first character must be { and the last must be }. Use this exact shape:
 {
   "summary": string (3-5 sentence executive overview),
   "urgency": "HIGH" | "MEDIUM" | "LOW",
@@ -82,12 +82,22 @@ function normalize(raw: unknown): CatchUpResult {
 }
 
 function parseJson(text: string) {
-  const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
   try {
     return JSON.parse(cleaned);
   } catch {
     const m = cleaned.match(/\{[\s\S]*\}/);
-    if (m) return JSON.parse(m[0]);
+    if (m) {
+      try {
+        return JSON.parse(m[0]);
+      } catch {
+        /* fall through */
+      }
+    }
     throw new Error("The model returned an unreadable response. Please try again.");
   }
 }
