@@ -44,7 +44,7 @@ export const detectProvider = (key: string): Provider =>
 
 function systemPrompt(language: Language) {
   const today = new Date().toISOString().slice(0, 10);
-  return `You are CatchUp AI, an executive assistant that reads messy chat transcripts (Slack, WhatsApp, Teams, Discord) and extracts what someone missed.
+  return `You are a chat summarizer. Output ONLY a valid raw JSON object without markdown formatting.\nYou are CatchUp AI, an executive assistant that reads messy chat transcripts (Slack, WhatsApp, Teams, Discord) and extracts what someone missed.
 Today's date is ${today}. Resolve relative dates ("Friday", "tomorrow EOD") into ISO 8601 datetimes when possible.
 Write ALL natural-language output (summary, tasks, deadline_text, decisions, conflicts) in ${language}. Keep person names / usernames exactly as written in the transcript.
 Only use information present in the transcript. Never invent people, tasks or dates.
@@ -81,25 +81,21 @@ function normalize(raw: unknown): CatchUpResult {
   };
 }
 
-function parseJson(text: string) {
-  const cleaned = text
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "")
-    .trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const m = cleaned.match(/\{[\s\S]*\}/);
-    if (m) {
-      try {
-        return JSON.parse(m[0]);
-      } catch {
-        /* fall through */
-      }
-    }
-    throw new Error("The model returned an unreadable response. Please try again.");
+export class RawResponseError extends Error {
+  constructor(public rawText: string) {
+    super("The model's reply couldn't be parsed as JSON. Showing the raw output instead.");
   }
+}
+
+function sanitize(rawText: string) {
+  const t = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  return start >= 0 && end > start ? t.substring(start, end + 1) : t;
+}
+
+function parseJson(text: string) {
+  return JSON.parse(sanitize(text));
 }
 
 async function errorMessage(res: Response) {
@@ -205,9 +201,11 @@ export async function analyzeChat(
   const models: readonly string[] = provider === "groq" ? GROQ_MODELS : GEMINI_MODELS;
 
   let lastErr = "No model responded.";
+  let lastRaw = "";
   for (const model of models) {
     try {
       const text = await callModel(provider, model, key, sys, user, signal);
+      lastRaw = text;
       // Parsing is inside the cascade: unreadable output also fails over.
       return normalize(parseJson(text));
     } catch (e) {
@@ -223,6 +221,7 @@ export async function analyzeChat(
       console.warn(`[CatchUp] ${model} unavailable (${msg}). Trying next model…`);
     }
   }
+  if (lastRaw) throw new RawResponseError(lastRaw);
   throw new Error(`All models in the fallback chain failed. Last error: ${lastErr}`);
 }
 
