@@ -30,7 +30,9 @@ describe("transcript Q&A", () => {
     vi.stubGlobal("fetch", fetchMock);
     const answer = await askTranscript("gsk_test-only", "Elena: I'll review the design on Friday.", "Who reviews the design?", "English");
     expect(answer).toBe("Elena will review the design on Friday.");
-    const [url, options] = fetchMock.mock.calls[0];
+    const call = fetchMock.mock.calls[0];
+    if (!call) throw new Error("Expected a Groq request");
+    const [url, options] = call;
     expect(url).toBe("https://api.groq.com/openai/v1/chat/completions");
     const body = JSON.parse(options.body);
     expect(body.model).toBe("llama-3.3-70b-versatile");
@@ -40,15 +42,19 @@ describe("transcript Q&A", () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(new Response('{"error":{"message":"Rate limited"}}', { status: 429 })).mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: '{"answer":"Elena owns the review."}' } }] })));
     vi.stubGlobal("fetch", fetchMock);
     expect(await askTranscript("gsk_test-only", "Elena owns the review.", "Who owns the review?", "English")).toBe("Elena owns the review.");
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body).model).toBe("openai/gpt-oss-20b");
+    const fallbackCall = fetchMock.mock.calls[1];
+    if (!fallbackCall) throw new Error("Expected a fallback request");
+    expect(JSON.parse(fallbackCall[1].body).model).toBe("openai/gpt-oss-20b");
   });
   it("sends question and transcript through Gemini when a Gemini key is selected", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"answer":"Elena est responsable."}' }] } }] })));
     vi.stubGlobal("fetch", fetchMock);
     expect(await askTranscript("test-only", "Elena owns the review.", "Who owns the review?", "French")).toBe("Elena est responsable.");
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const call = fetchMock.mock.calls[0];
+    if (!call) throw new Error("Expected a Gemini request");
+    const body = JSON.parse(call[1].body);
     expect(JSON.parse(body.contents[0].parts[0].text)).toEqual({ transcript: "Elena owns the review.", question: "Who owns the review?" });
-    expect(fetchMock.mock.calls[0][0]).toContain("models/gemini-2.0-flash:generateContent");
+    expect(call[0]).toContain("models/gemini-2.0-flash:generateContent");
   });
   it("does not make requests after cancellation", async () => {
     const fetchMock = vi.fn();
