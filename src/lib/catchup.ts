@@ -101,6 +101,87 @@ async function errorMessage(res: Response) {
   }
 }
 
+export const GROQ_MODELS = [
+  "llama-3.1-8b-instant",
+  "llama-3.3-70b-versatile",
+  "llama3-70b-8192",
+  "openai/gpt-oss-20b",
+] as const;
+export const GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"] as const;
+
+const ATTEMPT_TIMEOUT_MS = 20000;
+const FAILOVER_STATUSES = new Set([404, 429, 503]);
+
+class AttemptError extends Error {
+  constructor(
+    message: string,
+    public failover: boolean,
+  ) {
+    super(message);
+  }
+}
+
+async function callModel(
+  provider: Provider,
+  model: string,
+  key: string,
+  sys: string,
+  user: string,
+  outer?: AbortSignal,
+): Promise<string> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ATTEMPT_TIMEOUT_MS);
+  const onOuter = () => ctrl.abort();
+  outer?.addEventListener("abort", onOuter);
+  try {
+    const res =
+      provider === "groq"
+        ? await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            signal: ctrl.signal,
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+            body: JSON.stringify({
+              model,
+              temperature: 0.2,
+              response_format: { type: "json_object" },
+              messages: [
+                { role: "system", content: sys },
+                { role: "user", content: user },
+              ],
+            }),
+          })
+        : await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+            {
+              method: "POST",
+              signal: ctrl.signal,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: sys }] },
+                contents: [{ role: "user", parts: [{ text: user }] }],
+                generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
+              }),
+            },
+          );
+    if (!res.ok) throw new AttemptError(await errorMessage(res), FAILOVER_STATUSES.has(res.status));
+    const data = await res.json();
+    const text: string =
+      provider === "groq"
+        ? (data.choices?.[0]?.message?.content ?? "")
+        : (data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "");
+    if (!text.trim()) throw new AttemptError("The model returned an empty response.", true);
+    return text;
+  } catch (e) {
+    if (outer?.aborted) throw e; // user cancelled: stop the cascade
+    if (e instanceof AttemptError) throw e;
+    // timeout or network failure -> fail over
+    throw new AttemptError(e instanceof Error ? e.message : "Network error", true);
+  } finally {
+    clearTimeout(timer);
+    outer?.removeEventListener("abort", onOuter);
+  }
+}
+
 export async function analyzeChat(
   apiKey: string,
   transcript: string,
@@ -111,53 +192,28 @@ export async function analyzeChat(
   const provider = detectProvider(key);
   const sys = systemPrompt(language);
   const user = `Transcript:\n"""\n${transcript}\n"""\nReturn the JSON now.`;
+  const models: readonly string[] = provider === "groq" ? GROQ_MODELS : GEMINI_MODELS;
 
-  if (provider === "groq") {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      signal: signal ?? null,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: sys },
-          { role: "user", content: user },
-        ],
-      }),
-    });
-    if (!res.ok) throw new Error(await errorMessage(res));
-    const data = await res.json();
-    return normalize(parseJson(data.choices?.[0]?.message?.content ?? ""));
-  }
-
-  const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
-  let lastErr = "";
+  let lastErr = "No model responded.";
   for (const model of models) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
-      {
-        method: "POST",
-        signal: signal ?? null,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: sys }] },
-          contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
-        }),
-      },
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
-      if (!text) throw new Error("The model returned an empty response.");
+    try {
+      const text = await callModel(provider, model, key, sys, user, signal);
+      // Parsing is inside the cascade: unreadable output also fails over.
       return normalize(parseJson(text));
+    } catch (e) {
+      if (signal?.aborted) throw e;
+      const msg = e instanceof Error ? e.message : String(e);
+      lastErr = msg;
+      const failover = e instanceof AttemptError ? e.failover : true; // parse errors fail over
+      if (!failover) {
+        console.warn(`[CatchUp] ${model} failed (non-retryable): ${msg}`);
+        // Bad key etc. will fail on every model; stop early.
+        throw new Error(msg);
+      }
+      console.warn(`[CatchUp] ${model} unavailable (${msg}). Trying next model…`);
     }
-    lastErr = await errorMessage(res);
-    if (res.status !== 404) break;
   }
-  throw new Error(lastErr);
+  throw new Error(`All models in the fallback chain failed. Last error: ${lastErr}`);
 }
 
 // ---------- Exports ----------
