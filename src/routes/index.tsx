@@ -219,11 +219,22 @@ function Index() {
             <ShieldCheck className="size-3.5 shrink-0 text-primary" />
             <span>GenAI Transparency: Powered by Groq / Gemini API | Local-First Architecture</span>
           </div>
-          <label className="flex items-center gap-2 text-muted-foreground">
-            <Sun className="size-4" />
-            <Switch checked={dark} onCheckedChange={setDark} aria-label="Toggle dark mode" />
-            <Moon className="size-4" />
-          </label>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <button type="button" onClick={() => setDark(false)} aria-label="Light mode" className="cursor-pointer rounded p-1 hover:text-foreground">
+              <Sun className="size-4" />
+            </button>
+            <Switch
+              checked={dark}
+              onCheckedChange={(v) => {
+                document.documentElement.classList.toggle("dark", v);
+                setDark(v);
+              }}
+              aria-label="Toggle dark mode"
+            />
+            <button type="button" onClick={() => setDark(true)} aria-label="Dark mode" className="cursor-pointer rounded p-1 hover:text-foreground">
+              <Moon className="size-4" />
+            </button>
+          </div>
         </div>
       </header>
 
