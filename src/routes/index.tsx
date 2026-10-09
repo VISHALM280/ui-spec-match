@@ -29,6 +29,8 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { TranscriptQuestion } from "@/components/transcript-question";
+import { filterTasks, type TaskStatus } from "@/lib/task-filters";
 import {
   LANGUAGES,
   SAMPLE_CHAT,
@@ -69,6 +71,10 @@ function Index() {
   const [result, setResult] = useState<CatchUpResult | null>(null);
   const [rawFallback, setRawFallback] = useState<string | null>(null);
   const [done, setDone] = useState<boolean[]>([]);
+  const [personFilter, setPersonFilter] = useState("");
+  const [myUsername, setMyUsername] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
+  const [taskStatus, setTaskStatus] = useState<TaskStatus>("all");
   const [speaking, setSpeaking] = useState<"idle" | "playing" | "paused">("idle");
   const abortRef = useRef<AbortController | null>(null);
 
@@ -113,6 +119,9 @@ function Index() {
       if (parsedResult) {
         setResult(parsedResult);
         setDone(parsedResult.action_items.map(() => false));
+        setPersonFilter("");
+        setMineOnly(false);
+        setTaskStatus("all");
       }
       setLoading(false);
     }
@@ -199,6 +208,8 @@ function Index() {
   }
 
   const completed = done.filter(Boolean).length;
+  const assignees = [...new Set(result?.action_items.map((a) => a.assignee) ?? [])];
+  const visibleTasks = filterTasks(result?.action_items ?? [], done, mineOnly ? myUsername : personFilter, taskStatus);
 
   return (
     <div className="min-h-screen bg-ambient">
@@ -292,6 +303,7 @@ function Index() {
 
         {/* Results */}
         <section className="flex min-w-0 flex-col gap-5">
+          <TranscriptQuestion apiKey={apiKey} transcript={chat} language={language} />
           {error && (
             <div className="animate-rise flex gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
               <AlertTriangle className="size-5 shrink-0 text-destructive" />
@@ -343,11 +355,27 @@ function Index() {
                 delay={120}
                 extra={<span className="text-xs text-muted-foreground">{completed}/{result.action_items.length} done</span>}
               >
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant={!mineOnly && !personFilter ? "secondary" : "ghost"} aria-pressed={!mineOnly && !personFilter} onClick={() => { setPersonFilter(""); setMineOnly(false); setTaskStatus("all"); }}>All Tasks</Button>
+                  <Button size="sm" variant={mineOnly ? "secondary" : "ghost"} aria-pressed={mineOnly} disabled={!myUsername || !assignees.includes(myUsername)} onClick={() => { setMineOnly(true); setPersonFilter(""); }}>Mine{myUsername ? ` / @${myUsername}` : " / @username"}</Button>
+                  <Select value={myUsername || undefined} onValueChange={(v) => { setMyUsername(v); setMineOnly(true); setPersonFilter(""); }}>
+                    <SelectTrigger aria-label="Your username" className="h-8 w-auto min-w-36 max-w-full text-xs"><SelectValue placeholder="Your username" /></SelectTrigger>
+                    <SelectContent>{assignees.map((name) => <SelectItem key={name} value={name}>@{name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {personFilter && <Button size="sm" variant="secondary" aria-pressed onClick={() => setPersonFilter("")}>@{personFilter} ×</Button>}
+                </div>
+                <div className="mb-4 flex gap-1 border-b border-border pb-2" role="group" aria-label="Task status">
+                  {([ ["all", "Any status"], ["pending", "Pending"], ["completed", "Completed"] ] as const).map(([status, label]) => (
+                    <Button key={status} size="sm" variant={taskStatus === status ? "secondary" : "ghost"} aria-pressed={taskStatus === status} onClick={() => setTaskStatus(status)}>{label}</Button>
+                  ))}
+                </div>
                 {result.action_items.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No action items found.</p>
+                ) : visibleTasks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tasks match these filters.</p>
                 ) : (
                   <ul className="grid gap-2.5">
-                    {result.action_items.map((a, i) => {
+                    {visibleTasks.map(({ item: a, index: i }) => {
                       const cal = calendarUrl(a);
                       return (
                         <li
@@ -366,7 +394,7 @@ function Index() {
                           <div className="min-w-0 flex-1">
                             <p className={cn("text-sm font-medium", done[i] && "line-through")}>{a.task}</p>
                             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                              <span className="rounded-full bg-accent px-2 py-0.5 font-medium text-accent-foreground">@{a.assignee}</span>
+                              <Button variant="ghost" size="sm" aria-label={`Filter tasks for @${a.assignee}`} onClick={() => { setPersonFilter(a.assignee); setMineOnly(false); }} className="h-auto max-w-full whitespace-normal break-words rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">@{a.assignee}</Button>
                               {a.deadline_text && <span className="text-muted-foreground">⏱ {a.deadline_text}</span>}
                             </div>
                           </div>
