@@ -48,7 +48,7 @@ function systemPrompt(language: Language) {
 Today's date is ${today}. Resolve relative dates ("Friday", "tomorrow EOD") into ISO 8601 datetimes when possible.
 Write ALL natural-language output (summary, tasks, deadline_text, decisions, conflicts) in ${language}. Keep person names / usernames exactly as written in the transcript.
 Only use information present in the transcript. Never invent people, tasks or dates.
-Respond with RAW, valid JSON only. Do NOT wrap it in markdown code fences (no ```), and add no commentary before or after. The first character must be { and the last must be }. Use this exact shape:
+Respond with RAW, valid JSON only. Do NOT wrap it in markdown code fences (no backtick characters), and add no commentary before or after. The first character must be { and the last must be }. Use this exact shape:
 {
   "summary": string (3-5 sentence executive overview),
   "urgency": "HIGH" | "MEDIUM" | "LOW",
