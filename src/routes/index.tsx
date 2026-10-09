@@ -358,7 +358,7 @@ function Index() {
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   <Button size="sm" variant={!mineOnly && !personFilter ? "secondary" : "ghost"} aria-pressed={!mineOnly && !personFilter} onClick={() => { setPersonFilter(""); setMineOnly(false); setTaskStatus("all"); }}>All Tasks</Button>
                   <Button size="sm" variant={mineOnly ? "secondary" : "ghost"} aria-pressed={mineOnly} disabled={!myUsername || !assignees.includes(myUsername)} onClick={() => { setMineOnly(true); setPersonFilter(""); }}>Mine{myUsername ? ` / @${myUsername}` : " / @username"}</Button>
-                  <Select value={myUsername || undefined} onValueChange={(v) => { setMyUsername(v); setMineOnly(true); setPersonFilter(""); }}>
+                  <Select value={myUsername} onValueChange={(v) => { setMyUsername(v); setMineOnly(true); setPersonFilter(""); }}>
                     <SelectTrigger aria-label="Your username" className="h-8 w-auto min-w-36 max-w-full text-xs"><SelectValue placeholder="Your username" /></SelectTrigger>
                     <SelectContent>{assignees.map((name) => <SelectItem key={name} value={name}>@{name}</SelectItem>)}</SelectContent>
                   </Select>
