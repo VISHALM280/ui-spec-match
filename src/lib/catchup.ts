@@ -44,11 +44,12 @@ export const detectProvider = (key: string): Provider =>
 
 function systemPrompt(language: Language) {
   const today = new Date().toISOString().slice(0, 10);
-  return `You are a chat summarizer. Output ONLY a valid raw JSON object without markdown formatting.\nYou are CatchUp AI, an executive assistant that reads messy chat transcripts (Slack, WhatsApp, Teams, Discord) and extracts what someone missed.
+  return `You are CatchUp AI, an executive assistant that reads messy chat transcripts (Slack, WhatsApp, Teams, Discord) and extracts what someone missed.
+Reply with RAW, VALID JSON ONLY: no markdown, no code fences (no backtick characters), no preamble, no trailing commentary. The first character of your reply must be { and the last must be }.
 Today's date is ${today}. Resolve relative dates ("Friday", "tomorrow EOD") into ISO 8601 datetimes when possible.
 Write ALL natural-language output (summary, tasks, deadline_text, decisions, conflicts) in ${language}. Keep person names / usernames exactly as written in the transcript.
 Only use information present in the transcript. Never invent people, tasks or dates.
-Respond with RAW, valid JSON only. Do NOT wrap it in markdown code fences (no backtick characters), and add no commentary before or after. The first character must be { and the last must be }. Use this exact shape:
+Use this exact shape:
 {
   "summary": string (3-5 sentence executive overview),
   "urgency": "HIGH" | "MEDIUM" | "LOW",
@@ -107,10 +108,7 @@ async function errorMessage(res: Response) {
   }
 }
 
-export const GROQ_MODELS = [
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
-] as const;
+export const GROQ_MODELS = ["llama-3.3-70b-versatile", "openai/gpt-oss-20b"] as const;
 export const GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"] as const;
 
 const ATTEMPT_TIMEOUT_MS = 20000;
